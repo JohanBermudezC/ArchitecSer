@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '../firebase'
 
 const s = {
   page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faf8', fontFamily: "'Segoe UI', system-ui, sans-serif", padding: '40px 20px' },
@@ -36,7 +38,8 @@ export default function RegisterPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', lastname: '', email: '', phone: '', password: '', confirm: '' })
   const [errors, setErrors] = useState({})
-  const [modal, setModal] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [firebaseError, setFirebaseError] = useState('')
   const strength = getStrength(form.password)
 
   const validate = () => {
@@ -55,13 +58,36 @@ export default function RegisterPage() {
   const change = (field, val) => {
     setForm(p => ({ ...p, [field]: val }))
     if (errors[field]) setErrors(p => ({ ...p, [field]: '' }))
+    if (firebaseError) setFirebaseError('')
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const e = validate()
-    if (Object.keys(e).length > 0) { setErrors(e); return }
+    if (Object.keys(e).length > 0) {
+      setErrors(e)
+      return
+    }
     setErrors({})
-    setModal(true)
+    setLoading(true)
+    setFirebaseError('')
+    try {
+      await createUserWithEmailAndPassword(auth, form.email, form.password)
+      // Registro exitoso, redirigir a login con mensaje (puedes usar state)
+      navigate('/login', { state: { registered: true } })
+    } catch (error) {
+      console.error('Error registro:', error.code, error.message)
+      if (error.code === 'auth/email-already-in-use') {
+        setFirebaseError('Este correo ya está registrado. Inicia sesión o usa otro.')
+      } else if (error.code === 'auth/weak-password') {
+        setFirebaseError('La contraseña es muy débil. Usa al menos 6 caracteres.')
+      } else if (error.code === 'auth/network-request-failed') {
+        setFirebaseError('Error de red. Verifica tu conexión.')
+      } else {
+        setFirebaseError('Ocurrió un error. Intenta de nuevo.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -117,32 +143,13 @@ export default function RegisterPage() {
           {errors.confirm && <div style={s.error}>⚠ {errors.confirm}</div>}
         </div>
 
-        <button style={s.btn} onClick={handleSubmit}>Crear cuenta</button>
+        {firebaseError && <div style={{ ...s.error, marginBottom: '12px', textAlign: 'center', background: '#fee2e2', padding: '10px', borderRadius: '8px' }}>{firebaseError}</div>}
+
+        <button style={s.btn} onClick={handleSubmit} disabled={loading}>
+          {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+        </button>
         <div style={s.foot}>¿Ya tienes cuenta? <Link to="/login" style={s.link}>Inicia sesión</Link></div>
       </div>
-
-      {modal && (
-        <div style={s.overlay}>
-          <div style={s.modal}>
-            <div style={s.modalTitle}>✅ Datos del formulario — Registro</div>
-            {[
-              ['Nombre', `${form.name} ${form.lastname}`],
-              ['Correo', form.email],
-              ['Teléfono', form.phone || '—'],
-              ['Contraseña', '•'.repeat(form.password.length)],
-              ['Fortaleza', strength.label],
-            ].map(([k, v]) => (
-              <div key={k} style={s.modalRow}>
-                <span style={{ color: '#888' }}>{k}</span>
-                <span style={{ fontWeight: 600 }}>{v}</span>
-              </div>
-            ))}
-            <button style={s.modalBtn} onClick={() => { setModal(false); navigate('/login') }}>
-              Ir a iniciar sesión →
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

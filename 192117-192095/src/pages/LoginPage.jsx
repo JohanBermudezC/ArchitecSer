@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '../firebase'
 
 const styles = {
   page: { minHeight: '100vh', display: 'flex', fontFamily: "'Segoe UI', system-ui, sans-serif", background: '#f8faf8' },
@@ -17,8 +19,8 @@ const styles = {
   subtitle: { fontSize: '14px', color: '#888', marginBottom: '36px' },
   label: { fontSize: '13px', fontWeight: 600, color: '#333', marginBottom: '6px', display: 'block' },
   input: {
-    width: '100%', padding: '12px 14px', border: '1.5px solid #e5e5e5', borderRadius: '10px',
-    fontSize: '14px', outline: 'none', background: '#fff', boxSizing: 'border-box',
+    width: '100%', padding: '12px 14px', borderWidth: '1.5px', borderStyle: 'solid', borderColor: '#e5e5e5',
+    borderRadius: '10px', fontSize: '14px', outline: 'none', background: '#fff', boxSizing: 'border-box',
     transition: 'border-color 0.2s', marginBottom: '4px'
   },
   inputError: { borderColor: '#ef4444' },
@@ -30,32 +32,15 @@ const styles = {
   },
   row: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' },
   link: { fontSize: '13px', color: '#22c55e', textDecoration: 'none', fontWeight: 500 },
-  divider: { textAlign: 'center', color: '#ccc', fontSize: '13px', margin: '20px 0' },
-  registerRow: { textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#888' },
-  // Modal
-  overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999
-  },
-  modal: {
-    background: '#fff', borderRadius: '16px', padding: '36px 40px',
-    maxWidth: '440px', width: '90%', boxShadow: '0 24px 80px rgba(0,0,0,0.18)'
-  },
-  modalTitle: { fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: '#0f0f0f' },
-  modalRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0', fontSize: '14px' },
-  modalKey: { color: '#888' },
-  modalVal: { fontWeight: 600, color: '#0f0f0f' },
-  modalBtn: {
-    marginTop: '24px', width: '100%', background: '#22c55e', color: '#fff', border: 'none',
-    padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer'
-  }
+  registerRow: { textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#888' }
 }
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
-  const [modal, setModal] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [firebaseError, setFirebaseError] = useState('')
 
   const validate = () => {
     const e = {}
@@ -66,21 +51,43 @@ export default function LoginPage() {
     return e
   }
 
-  const handleSubmit = () => {
-    const e = validate()
-    if (Object.keys(e).length > 0) { setErrors(e); return }
-    setErrors({})
-    setModal(true)
-  }
-
   const change = (field, val) => {
     setForm(p => ({ ...p, [field]: val }))
     if (errors[field]) setErrors(p => ({ ...p, [field]: '' }))
+    if (firebaseError) setFirebaseError('')
+  }
+
+  const handleSubmit = async () => {
+    const e = validate()
+    if (Object.keys(e).length > 0) {
+      setErrors(e)
+      return
+    }
+    setErrors({})
+    setLoading(true)
+    setFirebaseError('')
+    try {
+      await signInWithEmailAndPassword(auth, form.email, form.password)
+      // Login exitoso
+      navigate('/') // o a la página principal
+    } catch (error) {
+      console.error('Error login:', error.code, error.message)
+      if (error.code === 'auth/user-not-found') {
+        setFirebaseError('No existe una cuenta con este correo.')
+      } else if (error.code === 'auth/wrong-password') {
+        setFirebaseError('Contraseña incorrecta.')
+      } else if (error.code === 'auth/too-many-requests') {
+        setFirebaseError('Demasiados intentos. Espera unos minutos.')
+      } else {
+        setFirebaseError('Ocurrió un error. Intenta de nuevo.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div style={styles.page}>
-      {/* Panel izquierdo */}
       <div style={styles.left}>
         <div style={styles.logo}><span style={styles.dot} />CanchaYa</div>
         <h1 style={styles.title}>Bienvenido de nuevo</h1>
@@ -109,7 +116,11 @@ export default function LoginPage() {
           {errors.password && <div style={styles.error}>⚠ {errors.password}</div>}
         </div>
 
-        <button style={styles.btn} onClick={handleSubmit}>Iniciar sesión</button>
+        {firebaseError && <div style={{ ...styles.error, textAlign: 'center', background: '#fee2e2', padding: '10px', borderRadius: '8px', marginBottom: '16px' }}>{firebaseError}</div>}
+
+        <button style={styles.btn} onClick={handleSubmit} disabled={loading}>
+          {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+        </button>
 
         <div style={styles.registerRow}>
           ¿No tienes cuenta?{' '}
@@ -117,7 +128,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Panel derecho decorativo */}
       <div style={styles.right}>
         <svg style={{ opacity: 0.15, position: 'absolute' }} width="400" height="400" viewBox="0 0 400 400">
           <rect x="20" y="20" width="360" height="360" fill="none" stroke="white" strokeWidth="3" rx="4" />
@@ -132,20 +142,6 @@ export default function LoginPage() {
           <div style={{ fontSize: '15px', opacity: 0.8, maxWidth: '260px' }}>Reserva en segundos, juega sin complicaciones</div>
         </div>
       </div>
-
-      {/* Modal */}
-      {modal && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <div style={styles.modalTitle}>✅ Datos del formulario — Login</div>
-            <div style={styles.modalRow}><span style={styles.modalKey}>Correo</span><span style={styles.modalVal}>{form.email}</span></div>
-            <div style={styles.modalRow}><span style={styles.modalKey}>Contraseña</span><span style={styles.modalVal}>{'•'.repeat(form.password.length)}</span></div>
-            <button style={styles.modalBtn} onClick={() => { setModal(false); navigate('/') }}>
-              Continuar al inicio →
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
