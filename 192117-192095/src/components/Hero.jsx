@@ -1,4 +1,17 @@
+import { useNavigate } from 'react-router-dom';
+const isLoggedIn = localStorage.getItem('userToken');
+
 function Hero() {
+  const navigate = useNavigate();
+  const isLoggedIn = localStorage.getItem('userToken'); 
+
+  const handleClick = () => {
+    if (!isLoggedIn) {
+      navigate('/login'); // manda a login si no está logueado
+    } else {
+      navigate('/canchas'); // si está logueado, ir a canchas
+    }
+  };
   return (
     <section style={{
       padding: '90px 40px 80px', display: 'flex', alignItems: 'center',
@@ -29,7 +42,7 @@ function Hero() {
           <button style={{
             background: '#1a1a1a', color: '#fff', padding: '14px 28px',
             borderRadius: '10px', fontSize: '15px', fontWeight: 600, border: 'none', cursor: 'pointer'
-          }}>
+          }} onClick={handleClick}>
             Ver canchas disponibles
           </button>
           <button style={{

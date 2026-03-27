@@ -9,7 +9,7 @@ function Navbar() {
     }}>
       <div style={{ fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ width: '10px', height: '10px', background: '#22c55e', borderRadius: '50%', display: 'inline-block' }} />
-        Chancha Ya
+        Cancha Ya
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
         {['Inicio', 'Canchas', 'Mis Reservas', 'Contacto'].map(link => (
@@ -33,7 +33,7 @@ function Navbar() {
           padding: '10px 22px', borderRadius: '8px', fontSize: '14px',
           fontWeight: 500, cursor: 'pointer'
         }}>
-             Registro
+             Registrarme
           
         </button>
         </Link>
