@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '../firebase'
+import { auth, db } from '../../firebase'
+import { addDoc, collection, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
 const s = {
   page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faf8', fontFamily: "'Segoe UI', system-ui, sans-serif", padding: '40px 20px' },
@@ -71,8 +72,22 @@ export default function RegisterPage() {
     setLoading(true)
     setFirebaseError('')
     try {
-      await createUserWithEmailAndPassword(auth, form.email, form.password)
-      // Registro exitoso, redirigir a login con mensaje (puedes usar state)
+      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password)
+      const user = userCredential.user
+      await setDoc(doc(db, 'users', user.uid), {
+        name: form.name,
+        lastname: form.lastname,
+        email: form.email,
+        phone: form.phone || '',
+        createdAt: serverTimestamp()
+      })
+      await addDoc(collection(db, 'historial'), {
+        metodo: 'email',
+        usuario: form.email,
+        tiempoInicio: serverTimestamp(),
+        tiempoSalida: null,
+        estado: 'activo'
+      })
       navigate('/login', { state: { registered: true } })
     } catch (error) {
       console.error('Error registro:', error.code, error.message)
