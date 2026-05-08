@@ -144,7 +144,15 @@ function Navbar() {
             >
               Dashboard
             </Link>
-
+                <Link
+                   to="/profile"
+                    style={{
+                    fontSize: '22px',
+                    textDecoration: 'none'
+             }}
+            >
+            👤
+              </Link>
             
 
 

@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import HistoryPage from './pages/HistoryPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
+import ProfilePage from './pages/ProfilePage'
 
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/forgot" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
        
       </Routes>
     </BrowserRouter>
