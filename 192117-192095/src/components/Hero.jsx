@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-const isLoggedIn = localStorage.getItem('userToken');
 
 function Hero() {
   const navigate = useNavigate();
