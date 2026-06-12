@@ -11,6 +11,8 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 function App() {
   return (
     <BrowserRouter>
+
+      
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginPage />} />
