@@ -282,15 +282,28 @@ export default function LoginPage() {
 
     try {
 
-      await signInWithEmailAndPassword(
-        auth,
-        form.email,
-        form.password
-      )
+      const cred = await signInWithEmailAndPassword(
+  auth,
+  form.email,
+  form.password
+)
 
-      await guardarHistorial('email', form.email)
+await guardarHistorial('email', form.email)
 
-      navigate('/dashboard')
+const userRef = doc(db, 'usuarios', cred.user.uid)
+const userSnap = await getDoc(userRef)
+
+if (userSnap.exists()) {
+  const userData = userSnap.data()
+
+    if (userData.rol === 'admin') {
+           navigate('/canchas')
+        } else {
+           navigate('/dashboard')
+           }
+      } else {
+          navigate('/dashboard')
+        }
 
     } catch (error) {
 
@@ -324,7 +337,20 @@ export default function LoginPage() {
         user.email
       )
 
-      navigate('/dashboard')
+      const userRef = doc(db, 'usuarios', user.uid)
+        const userSnap = await getDoc(userRef)
+
+            if (userSnap.exists()) {
+  const userData = userSnap.data()
+
+  if (userData.rol === 'admin') {
+    navigate('/canchas')
+  } else {
+    navigate('/dashboard')
+  }
+} else {
+  navigate('/dashboard')
+}
 
     } catch (error) {
 
@@ -358,7 +384,20 @@ export default function LoginPage() {
         user.email
       )
 
-      navigate('/dashboard')
+      const userRef = doc(db, 'usuarios', user.uid)
+const userSnap = await getDoc(userRef)
+
+if (userSnap.exists()) {
+  const userData = userSnap.data()
+
+  if (userData.rol === 'admin') {
+    navigate('/canchas')
+  } else {
+    navigate('/dashboard')
+  }
+} else {
+  navigate('/dashboard')
+}
 
     } catch (error) {
 
@@ -392,7 +431,20 @@ export default function LoginPage() {
         user.email
       )
 
-      navigate('/dashboard')
+      const userRef = doc(db, 'usuarios', user.uid)
+    const userSnap = await getDoc(userRef)
+
+            if (userSnap.exists()) {
+    const userData = userSnap.data()
+
+        if (userData.rol === 'admin') {
+    navigate('/canchas')
+      } else {
+    navigate('/dashboard')
+          }
+        } else {
+          navigate('/dashboard')
+      }
 
     } catch (error) {
 
