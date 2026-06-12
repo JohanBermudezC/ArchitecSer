@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth'
-import { auth } from '../firebase'
+import { auth } from '../../firebase'
 
 const styles = {
   page: { minHeight: '100vh', display: 'flex', fontFamily: "'Segoe UI', system-ui, sans-serif", background: '#f8faf8' },
@@ -72,7 +72,6 @@ function getStrength(password) {
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const oobCode = searchParams.get('oobCode')
 
   const [form, setForm] = useState({ password: '', confirm: '' })
