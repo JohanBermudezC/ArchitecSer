@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import { useNavigate } from "react-router-dom"
 
 const styles = {
   page: { minHeight: '100vh', background: '#f8faf8', fontFamily: 'Segoe UI, system-ui, sans-serif' },
@@ -24,6 +25,7 @@ function Dashboard() {
   const [user, setUser] = useState(null)
   const [userData, setUserData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -70,11 +72,23 @@ function Dashboard() {
           </div>
 
           <div style={styles.card}>
-            <div style={styles.cardIcon}>⚽</div>
-            <h3 style={styles.cardTitle}>Buscar Canchas</h3>
-            <p style={styles.cardText}>Encuentra canchas disponibles cerca de ti</p>
-            <button style={styles.btn}>Buscar</button>
-          </div>
+  <div style={styles.cardIcon}>⚽</div>
+
+  <h3 style={styles.cardTitle}>
+    Buscar Canchas
+  </h3>
+
+  <p style={styles.cardText}>
+    Encuentra canchas disponibles cerca de ti
+  </p>
+
+  <button
+    style={styles.btn}
+    onClick={() => navigate("/buscar-canchas")}
+  >
+    Buscar
+  </button>
+</div>
 
           <div style={styles.card}>
             <div style={styles.cardIcon}>📊</div>
