@@ -8,6 +8,7 @@ import HistoryPage from './pages/HistoryPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import CanchasPage from './pages/CanchasPage'
+import BuscarCanchasPage from "./pages/BuscarCanchasPage"
 
 function App() {
   return (
@@ -25,6 +26,10 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route path="/canchas" element={<CanchasPage />} />
+        <Route
+  path="/buscar-canchas"
+  element={<BuscarCanchasPage />}
+/>
       </Routes>
     </BrowserRouter>
   )
