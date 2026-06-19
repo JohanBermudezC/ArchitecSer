@@ -267,8 +267,19 @@ export default function LoginPage() {
     try {
       const result = await signInWithEmailAndPassword(auth, form.email, form.password);
       await guardarUsuario(result.user);
-      await guardarHistorial("password", form.email);
-      navigate("/dashboard");
+await guardarHistorial("password", form.email);
+
+const userDoc = await getDoc(
+  doc(db, "usuarios", result.user.uid)
+);
+
+const rol = userDoc.data()?.rol;
+
+if (rol === "admin") {
+  navigate("/canchas");
+} else {
+  navigate("/dashboard");
+}
     } catch (error) {
       console.error('Error en handleSubmit:', error);
       setFirebaseError(error.message || "Credenciales incorrectas");
@@ -284,8 +295,19 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       await guardarUsuario(result.user);
-      await guardarHistorial(provider.providerId, result.user.email);
-      navigate("/dashboard");
+await guardarHistorial(provider.providerId, result.user.email);
+
+const userDoc = await getDoc(
+  doc(db, "usuarios", result.user.uid)
+);
+
+const rol = userDoc.data()?.rol;
+
+if (rol === "admin") {
+  navigate("/canchas");
+} else {
+  navigate("/dashboard");
+}
     } catch (error) {
       console.error('Error en handleSocialLogin:', error);
       if (error.code === 'auth/account-exists-with-different-credential') {

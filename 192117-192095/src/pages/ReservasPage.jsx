@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore"
 import { auth, db } from "../firebase"
 import { onAuthStateChanged } from "firebase/auth"
+import jsPDF from "jspdf"
 
 function ReservasPage() {
   const navigate = useNavigate()
@@ -42,6 +43,76 @@ function ReservasPage() {
     } catch (error) {
       console.error("Error al obtener reservas:", error)
     }
+  }
+
+  const exportarPDF = () => {
+    const doc = new jsPDF()
+    
+    // Título "reservalapp" en verde
+    doc.setFontSize(28)
+    doc.setTextColor(34, 197, 94) // Verde #22c55e
+    doc.text("reservalapp", 105, 20, { align: "center" })
+    
+    // Subtítulo
+    doc.setFontSize(16)
+    doc.setTextColor(0, 0, 0)
+    doc.text("Tus Reservas", 105, 35, { align: "center" })
+    
+    // Fecha de generación
+    doc.setFontSize(10)
+    doc.setTextColor(107, 114, 128)
+    doc.text(`Generado: ${new Date().toLocaleDateString()}`, 105, 45, { align: "center" })
+    
+    // Línea separadora
+    doc.setDrawColor(34, 197, 94)
+    doc.setLineWidth(0.5)
+    doc.line(20, 50, 190, 50)
+    
+    let yPosition = 60
+    
+    if (reservas.length === 0) {
+      doc.setFontSize(14)
+      doc.setTextColor(107, 114, 128)
+      doc.text("No tienes reservas registradas", 105, yPosition + 10, { align: "center" })
+    } else {
+      reservas.forEach((reserva, index) => {
+        // Verificar si necesitamos nueva página
+        if (yPosition > 250) {
+          doc.addPage()
+          yPosition = 20
+        }
+        
+        // Estado de la reserva
+        doc.setFontSize(12)
+        const estadoColor = reserva.estado === "pendiente" ? [34, 197, 94] : [239, 68, 68]
+        doc.setTextColor(...estadoColor)
+        doc.text(`Estado: ${reserva.estado.toUpperCase()}`, 25, yPosition)
+        
+        // Nombre de la cancha
+        doc.setFontSize(14)
+        doc.setTextColor(0, 0, 0)
+        doc.text(reserva.canchaNombre, 25, yPosition + 10)
+        
+        // Detalles
+        doc.setFontSize(10)
+        doc.setTextColor(107, 114, 128)
+        doc.text(`Tipo: ${reserva.canchaTipo}`, 25, yPosition + 20)
+        doc.text(`Ubicación: ${reserva.canchaUbicacion}`, 25, yPosition + 28)
+        doc.text(`Fecha: ${reserva.fecha}`, 25, yPosition + 36)
+        doc.text(`Horario: ${reserva.horaInicio} - ${reserva.horaFin}`, 25, yPosition + 44)
+        doc.text(`Precio total: $${reserva.precioTotal.toFixed(2)}`, 25, yPosition + 52)
+        
+        // Línea separadora entre reservas
+        doc.setDrawColor(229, 231, 235)
+        doc.setLineWidth(0.3)
+        doc.line(20, yPosition + 60, 190, yPosition + 60)
+        
+        yPosition += 70
+      })
+    }
+    
+    // Guardar PDF
+    doc.save("TusReservas.pdf")
   }
 
   const cancelarReserva = async (id) => {
@@ -148,9 +219,28 @@ function ReservasPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#f8faf8", padding: "40px" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <h1 style={{ textAlign: "center", color: "#166534", fontSize: "40px", marginBottom: "10px" }}>
-          ⚽ Mis Reservas
-        </h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+          <h1 style={{ color: "#166534", fontSize: "40px", margin: 0 }}>
+            ⚽ Mis Reservas
+          </h1>
+          <button
+            onClick={exportarPDF}
+            style={{
+              background: "linear-gradient(135deg, #22c55e, #16a34a)",
+              color: "#fff",
+              border: "none",
+              padding: "12px 24px",
+              borderRadius: "10px",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontSize: "14px",
+              boxShadow: "0 4px 12px rgba(34,197,94,0.3)",
+              transition: "transform 0.2s, box-shadow 0.2s"
+            }}
+          >
+            📄 Exportar PDF
+          </button>
+        </div>
         <p style={{ textAlign: "center", color: "#6b7280", marginBottom: "30px" }}>
           Gestiona tus reservas de canchas
         </p>
