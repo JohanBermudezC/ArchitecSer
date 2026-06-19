@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth'
 import { auth } from '../../firebase'
+import {
+  getPasswordPolicyMessage,
+  getPasswordStrength,
+  PASSWORD_POLICY_TEXT,
+} from '../../utils/passwordPolicy'
 
 const styles = {
   page: { minHeight: '100vh', display: 'flex', fontFamily: "'Segoe UI', system-ui, sans-serif", background: '#f8faf8' },
@@ -54,22 +59,6 @@ const styles = {
   strengthSegment: { height: '4px', flex: 1, borderRadius: '2px', background: '#e5e5e5', transition: 'background 0.3s' },
 }
 
-const strengthLevels = [
-  { label: 'Muy débil', color: '#ef4444' },
-  { label: 'Débil', color: '#f97316' },
-  { label: 'Regular', color: '#eab308' },
-  { label: 'Fuerte', color: '#22c55e' },
-]
-
-function getStrength(password) {
-  let score = 0
-  if (password.length >= 8) score++
-  if (/[A-Z]/.test(password)) score++
-  if (/[0-9]/.test(password)) score++
-  if (/[^A-Za-z0-9]/.test(password)) score++
-  return score
-}
-
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
   const oobCode = searchParams.get('oobCode')
@@ -91,12 +80,15 @@ export default function ResetPasswordPage() {
       .finally(() => setVerifying(false))
   }, [oobCode])
 
-  const strength = getStrength(form.password)
+  const strength = getPasswordStrength(form.password)
 
   const validate = () => {
     const e = {}
     if (!form.password) e.password = 'La contraseña es obligatoria'
-    else if (form.password.length < 6) e.password = 'Mínimo 6 caracteres'
+    else {
+      const passwordPolicyMessage = getPasswordPolicyMessage(form.password)
+      if (passwordPolicyMessage) e.password = passwordPolicyMessage
+    }
     if (!form.confirm) e.confirm = 'Confirma tu contraseña'
     else if (form.password !== form.confirm) e.confirm = 'Las contraseñas no coinciden'
     return e
@@ -166,7 +158,7 @@ export default function ResetPasswordPage() {
                   ...(focused === 'password' && !errors.password ? styles.inputFocus : {})
                 }}
                 type="password"
-                placeholder="••••••••"
+                placeholder={PASSWORD_POLICY_TEXT}
                 value={form.password}
                 onChange={e => change('password', e.target.value)}
                 onFocus={() => setFocused('password')}
@@ -179,12 +171,12 @@ export default function ResetPasswordPage() {
                     {[0, 1, 2, 3].map(i => (
                       <div key={i} style={{
                         ...styles.strengthSegment,
-                        background: i < strength ? strengthLevels[strength - 1]?.color : '#e5e5e5'
+                        background: i < Math.ceil((strength.score / 5) * 4) ? strength.color : '#e5e5e5'
                       }} />
                     ))}
                   </div>
-                  <div style={{ ...styles.hint, color: strengthLevels[strength - 1]?.color || '#aaa' }}>
-                    {strengthLevels[strength - 1]?.label || 'Ingresa una contraseña'}
+                  <div style={{ ...styles.hint, color: strength.color || '#aaa' }}>
+                    {strength.label || 'Ingresa una contraseña'}
                   </div>
                 </>
               )}
