@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, linkWithPopup, GoogleAuthProvider, GithubAuthProvider, FacebookAuthProvider, EmailAuthProvider, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { auth, db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 
 import {
@@ -487,7 +487,7 @@ function Dashboard() {
               todas tus reservas activas.
             </p>
 
-            <button style={styles.btn}>
+            <button style={styles.btn} onClick={() => navigate("/reservas")}>
               Ver Reservas
             </button>
           </div>

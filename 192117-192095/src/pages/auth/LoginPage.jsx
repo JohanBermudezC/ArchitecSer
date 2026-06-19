@@ -233,8 +233,12 @@ export default function LoginPage() {
 
     const currentProviders = new Set(user.providerData.map(p => p.providerId));
     if (user.email) {
-      const methods = await fetchSignInMethodsForEmail(auth, user.email);
-      if (methods.includes('password')) currentProviders.add('password');
+      try {
+        const methods = await fetchSignInMethodsForEmail(auth, user.email);
+        if (methods.includes('password')) currentProviders.add('password');
+      } catch (error) {
+        console.error('Error fetching sign-in methods:', error);
+      }
     }
 
     if (!userSnap.exists()) {
@@ -266,7 +270,8 @@ export default function LoginPage() {
       await guardarHistorial("password", form.email);
       navigate("/dashboard");
     } catch (error) {
-      setFirebaseError("Credenciales incorrectas");
+      console.error('Error en handleSubmit:', error);
+      setFirebaseError(error.message || "Credenciales incorrectas");
     } finally {
       setLoading(false);
     }
@@ -282,13 +287,14 @@ export default function LoginPage() {
       await guardarHistorial(provider.providerId, result.user.email);
       navigate("/dashboard");
     } catch (error) {
+      console.error('Error en handleSocialLogin:', error);
       if (error.code === 'auth/account-exists-with-different-credential') {
         const email = error.customData.email;
         const methods = await fetchSignInMethodsForEmail(auth, email);
         const method = methods[0] === 'password' ? 'email y contraseña' : methods[0];
         setFirebaseError(`Ya existe una cuenta con el email ${email} usando ${method}. Inicia sesión con ${method} y vincula este servicio desde tu Dashboard.`);
       } else {
-        setFirebaseError("Error al iniciar sesión.");
+        setFirebaseError(error.message || "Error al iniciar sesión.");
       }
     } finally {
       setProviderLoading(false);

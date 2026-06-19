@@ -2,15 +2,21 @@ import { useNavigate } from 'react-router-dom';
 
 function Hero() {
   const navigate = useNavigate();
-  const isLoggedIn = localStorage.getItem('userToken'); 
 
-  const handleClick = () => {
-    if (!isLoggedIn) {
-      navigate('/login'); // manda a login si no está logueado
-    } else {
-      navigate('/canchas'); // si está logueado, ir a canchas
+  const scrollToCanchas = () => {
+    const section = document.getElementById('canchas-disponibles');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  const scrollToComoFunciona = () => {
+    const section = document.getElementById('como-funciona');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <section style={{
       padding: '90px 40px 80px', display: 'flex', alignItems: 'center',
@@ -41,14 +47,14 @@ function Hero() {
           <button style={{
             background: '#1a1a1a', color: '#fff', padding: '14px 28px',
             borderRadius: '10px', fontSize: '15px', fontWeight: 600, border: 'none', cursor: 'pointer'
-          }} onClick={handleClick}>
+          }} onClick={scrollToCanchas}>
             Ver canchas disponibles
           </button>
           <button style={{
             background: '#fff', color: '#1a1a1a', padding: '14px 28px',
             borderRadius: '10px', fontSize: '15px', fontWeight: 500,
             border: '1.5px solid #e5e5e5', cursor: 'pointer'
-          }}>
+          }} onClick={scrollToComoFunciona}>
             Cómo funciona →
           </button>
         </div>
@@ -98,7 +104,7 @@ function Hero() {
                 background: '#22c55e', color: '#fff', border: 'none',
                 padding: '10px 20px', borderRadius: '8px', fontSize: '13px',
                 fontWeight: 600, cursor: 'pointer'
-              }}>
+              }} onClick={scrollToCanchas}>
                 Reservar
               </button>
             </div>
