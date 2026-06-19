@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged, linkWithPopup, GoogleAuthProvider, GithubAuthProvider, FacebookAuthProvider, EmailAuthProvider, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import {
   FaCalendarAlt,
@@ -230,6 +230,7 @@ const githubProvider = new GithubAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -494,7 +495,6 @@ function Dashboard() {
 
           <div style={styles.card}>
             <FaFutbol style={styles.icon} />
-
             <h3 style={styles.cardTitle}>
               Buscar Canchas
             </h3>
@@ -504,10 +504,16 @@ function Dashboard() {
               cerca de ti y reserva fácilmente.
             </p>
 
-            <button style={styles.btn}>
-              Buscar
-            </button>
-          </div>
+          <button
+  style={styles.btn}
+  onClick={() => {
+    navigate("/buscar-canchas");
+        
+        }}
+>
+            Buscar
+</button>
+        </div>
 
           <div style={styles.card}>
             <FaHistory style={styles.icon} />
