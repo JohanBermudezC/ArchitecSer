@@ -1,37 +1,36 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import Navbar from '../components/Navbar'
 import Hero from '../components/Hero'
 import Footer from '../components/Footer'
+import CanchaCard from '../components/CanchaCard'
 
 function Home() {
   const navigate = useNavigate()
   const [canchas, setCanchas] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    obtenerCanchas()
-  }, [])
-
-  const obtenerCanchas = async () => {
+  const obtenerCanchas = useCallback(async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "canchas"))
       const datos = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
-      console.log("Todas las canchas:", datos)
-      // Filtrar solo canchas disponibles
       const canchasDisponibles = datos.filter(cancha => cancha.estado === "Disponible")
-      console.log("Canchas disponibles:", canchasDisponibles)
       setCanchas(canchasDisponibles)
     } catch (error) {
       console.error("Error al obtener canchas:", error)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    obtenerCanchas()
+  }, [obtenerCanchas])
 
   const handleReservar = (canchaId) => {
     const userToken = localStorage.getItem('userToken')
@@ -68,51 +67,13 @@ function Home() {
               <p style={{ fontSize: '18px', color: '#64748b' }}>No hay canchas disponibles en este momento</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '25px' }}>
               {canchas.map((cancha) => (
-                <div key={cancha.id} style={{
-                  background: 'linear-gradient(135deg, #ffffff, #f8fafc)',
-                  padding: '28px',
-                  borderRadius: '24px',
-                  boxShadow: '0 8px 35px rgba(0,0,0,0.06)',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <h3 style={{ color: '#0f172a', fontSize: '22px', fontWeight: 700, marginBottom: '16px' }}>{cancha.nombre}</h3>
-                  
-                  <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '20px' }}>🏟️</span>
-                      <span style={{ color: '#334155' }}>{cancha.tipo}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '20px' }}>📍</span>
-                      <span style={{ color: '#334155' }}>{cancha.ubicacion}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '20px' }}>💰</span>
-                      <span style={{ color: '#334155' }}>${cancha.precioHora}/hora</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleReservar(cancha.id)}
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '14px 24px',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      fontSize: '15px',
-                      transition: 'transform 0.2s, box-shadow 0.2s',
-                      boxShadow: '0 8px 20px rgba(34,197,94,0.3)'
-                    }}
-                  >
-                    Reservar
-                  </button>
-                </div>
+                <CanchaCard
+                  key={cancha.id}
+                  cancha={cancha}
+                  onReserve={handleReservar}
+                />
               ))}
             </div>
           )}

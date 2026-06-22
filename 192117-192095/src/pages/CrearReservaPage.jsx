@@ -1,129 +1,428 @@
-import { useState, useEffect } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
-import { collection, addDoc, getDoc, doc, query, where, getDocs } from "firebase/firestore"
-import { auth, db } from "../firebase"
-import { onAuthStateChanged } from "firebase/auth"
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "../firebase";
+import {
+  getReservationSlotMessage,
+  getSlotByStart,
+  getUnavailableSlotStarts,
+  hasReservationOverlap,
+  isValidReservationSlot,
+  RESERVATION_SLOTS,
+} from "../utils/reservationSchedule";
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f6f8fb",
+    color: "#0f172a",
+    fontFamily: "'Segoe UI', system-ui, sans-serif",
+  },
+  shell: {
+    width: "min(1120px, calc(100% - 40px))",
+    margin: "0 auto",
+    padding: "42px 0 56px",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "20px",
+    marginBottom: "28px",
+  },
+  eyebrow: {
+    color: "#16a34a",
+    fontSize: "13px",
+    fontWeight: 800,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    marginBottom: "8px",
+  },
+  title: {
+    margin: 0,
+    fontSize: "42px",
+    lineHeight: 1.05,
+    fontWeight: 850,
+  },
+  subtitle: {
+    margin: "12px 0 0",
+    color: "#64748b",
+    fontSize: "16px",
+    lineHeight: 1.6,
+    maxWidth: "620px",
+  },
+  backButton: {
+    background: "#fff",
+    color: "#334155",
+    border: "1px solid #dbe3ef",
+    borderRadius: "12px",
+    padding: "12px 16px",
+    cursor: "pointer",
+    fontWeight: 700,
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+  },
+  layout: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+    gap: "24px",
+  },
+  panel: {
+    background: "#fff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "18px",
+    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.07)",
+  },
+  courtPanel: {
+    padding: "28px",
+  },
+  formPanel: {
+    padding: "30px",
+  },
+  panelTitle: {
+    margin: "0 0 18px",
+    fontSize: "20px",
+    fontWeight: 800,
+  },
+  courtName: {
+    margin: "4px 0 16px",
+    fontSize: "28px",
+    fontWeight: 850,
+    color: "#14532d",
+  },
+  infoGrid: {
+    display: "grid",
+    gap: "12px",
+  },
+  infoItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px",
+    padding: "12px 0",
+    borderBottom: "1px solid #edf2f7",
+    color: "#475569",
+    fontSize: "14px",
+  },
+  infoValue: {
+    color: "#0f172a",
+    fontWeight: 750,
+    textAlign: "right",
+  },
+  field: {
+    marginBottom: "20px",
+  },
+  label: {
+    display: "block",
+    marginBottom: "8px",
+    color: "#334155",
+    fontSize: "14px",
+    fontWeight: 800,
+  },
+  input: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "13px 14px",
+    borderRadius: "12px",
+    border: "1.5px solid #dbe3ef",
+    background: "#fff",
+    color: "#0f172a",
+    fontSize: "15px",
+    outline: "none",
+  },
+  select: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "13px 14px",
+    borderRadius: "12px",
+    border: "1.5px solid #dbe3ef",
+    background: "#fff",
+    color: "#0f172a",
+    fontSize: "15px",
+    outline: "none",
+  },
+  hint: {
+    margin: "8px 0 0",
+    color: "#64748b",
+    fontSize: "13px",
+  },
+  priceBox: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "16px",
+    background: "#f0fdf4",
+    border: "1px solid #bbf7d0",
+    borderRadius: "16px",
+    padding: "18px",
+    marginTop: "6px",
+  },
+  priceLabel: {
+    margin: 0,
+    color: "#166534",
+    fontSize: "14px",
+    fontWeight: 800,
+  },
+  priceValue: {
+    margin: 0,
+    color: "#14532d",
+    fontSize: "26px",
+    fontWeight: 900,
+  },
+  submitButton: {
+    width: "100%",
+    border: "none",
+    borderRadius: "14px",
+    background: "#16a34a",
+    color: "#fff",
+    padding: "15px 22px",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 850,
+    boxShadow: "0 14px 28px rgba(22, 163, 74, 0.22)",
+    marginTop: "22px",
+  },
+  disabledButton: {
+    background: "#94a3b8",
+    cursor: "not-allowed",
+    boxShadow: "none",
+  },
+  empty: {
+    background: "#fff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "18px",
+    padding: "40px",
+    textAlign: "center",
+    color: "#64748b",
+  },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.48)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    zIndex: 1000,
+  },
+  messageModal: {
+    width: "min(420px, 100%)",
+    background: "#fff",
+    borderRadius: "18px",
+    padding: "28px",
+    textAlign: "center",
+    boxShadow: "0 25px 80px rgba(15, 23, 42, 0.28)",
+  },
+  messageIcon: {
+    width: "54px",
+    height: "54px",
+    borderRadius: "50%",
+    display: "grid",
+    placeItems: "center",
+    margin: "0 auto 16px",
+    color: "#fff",
+    fontWeight: 900,
+    fontSize: "24px",
+  },
+  messageTitle: {
+    margin: "0 0 8px",
+    fontSize: "20px",
+    fontWeight: 850,
+  },
+  messageText: {
+    margin: "0 0 22px",
+    color: "#64748b",
+    lineHeight: 1.55,
+  },
+  messageButton: {
+    border: "none",
+    borderRadius: "12px",
+    background: "#0f172a",
+    color: "#fff",
+    padding: "11px 18px",
+    cursor: "pointer",
+    fontWeight: 800,
+  },
+};
+
+const getAlertTheme = (type) => {
+  if (type === "success") return { color: "#16a34a", icon: "OK" };
+  if (type === "warning") return { color: "#f59e0b", icon: "!" };
+  return { color: "#dc2626", icon: "X" };
+};
+
+function CenteredAlert({ alert, onClose }) {
+  if (!alert) return null;
+
+  const theme = getAlertTheme(alert.type);
+
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.messageModal} role="alertdialog" aria-modal="true">
+        <div style={{ ...styles.messageIcon, background: theme.color }}>
+          {theme.icon}
+        </div>
+        <h2 style={styles.messageTitle}>{alert.title}</h2>
+        <p style={styles.messageText}>{alert.text}</p>
+        {!alert.locked && (
+          <button style={styles.messageButton} onClick={onClose}>
+            Entendido
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function CrearReservaPage() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const canchaId = searchParams.get("canchaId")
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const canchaId = searchParams.get("canchaId");
 
-  const [cancha, setCancha] = useState(null)
-  const [fecha, setFecha] = useState("")
-  const [horaInicio, setHoraInicio] = useState("")
-  const [horaFin, setHoraFin] = useState("")
-  const [mensaje, setMensaje] = useState("")
-  const [loading, setLoading] = useState(true)
+  const [cancha, setCancha] = useState(null);
+  const [fecha, setFecha] = useState("");
+  const [horaInicio, setHoraInicio] = useState("");
+  const [alert, setAlert] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [unavailableSlots, setUnavailableSlots] = useState([]);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+
+  const selectedSlot = useMemo(() => getSlotByStart(horaInicio), [horaInicio]);
+  const horaFin = selectedSlot?.end || "";
+  const precioTotal = cancha?.precioHora ? Number(cancha.precioHora) : 0;
+
+  const showAlert = (type, title, text, locked = false) => {
+    setAlert({ type, title, text, locked });
+  };
+
+  const obtenerCancha = useCallback(async () => {
+    if (!canchaId) return;
+
+    try {
+      const canchaDoc = await getDoc(doc(db, "canchas", canchaId));
+      if (canchaDoc.exists()) {
+        setCancha({ id: canchaDoc.id, ...canchaDoc.data() });
+      } else {
+        showAlert("error", "Cancha no encontrada", "Selecciona otra cancha disponible.");
+      }
+    } catch (error) {
+      console.error("Error al obtener cancha:", error);
+      showAlert("error", "No pudimos cargar la cancha", "Intenta nuevamente en unos segundos.");
+    }
+  }, [canchaId]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        navigate("/login")
-        return
+        navigate("/login");
+        return;
       }
-      setLoading(false)
-    })
+      setLoading(false);
+    });
 
-    return () => unsubscribe()
-  }, [navigate])
+    return () => unsubscribe();
+  }, [navigate]);
 
   useEffect(() => {
-    if (canchaId) {
-      obtenerCancha()
-    }
-  }, [canchaId])
+    obtenerCancha();
+  }, [obtenerCancha]);
 
-  const obtenerCancha = async () => {
-    try {
-      const canchaDoc = await getDoc(doc(db, "canchas", canchaId))
-      if (canchaDoc.exists()) {
-        setCancha({ id: canchaDoc.id, ...canchaDoc.data() })
+  const verificarDisponibilidad = useCallback(async () => {
+    const q = query(
+      collection(db, "reservas"),
+      where("canchaId", "==", cancha.id),
+      where("fecha", "==", fecha),
+      where("estado", "in", ["pendiente", "confirmada"]),
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((reservationDoc) => ({
+      id: reservationDoc.id,
+      ...reservationDoc.data(),
+    }));
+  }, [cancha?.id, fecha]);
+
+  useEffect(() => {
+    const cargarBloquesOcupados = async () => {
+      if (!cancha?.id || !fecha) {
+        setUnavailableSlots([]);
+        return;
       }
-    } catch (error) {
-      console.error("Error al obtener cancha:", error)
-    }
-  }
 
-  const calcularPrecioTotal = () => {
-    if (!cancha || !horaInicio || !horaFin) return 0
-    const inicio = new Date(`2000-01-01T${horaInicio}`)
-    const fin = new Date(`2000-01-01T${horaFin}`)
-    const horas = (fin - inicio) / (1000 * 60 * 60)
-    return Math.max(0, horas * cancha.precioHora)
-  }
+      setCheckingAvailability(true);
+      try {
+        const reservasExistentes = await verificarDisponibilidad();
+        const occupiedStarts = getUnavailableSlotStarts(reservasExistentes);
+        setUnavailableSlots(occupiedStarts);
 
-  const verificarDisponibilidad = async () => {
-    try {
-      const q = query(
-        collection(db, "reservas"),
-        where("canchaId", "==", cancha.id),
-        where("fecha", "==", fecha),
-        where("estado", "in", ["pendiente", "confirmada"])
-      )
-      const querySnapshot = await getDocs(q)
-      return querySnapshot.docs.map(doc => doc.data())
-    } catch (error) {
-      console.error("Error al verificar disponibilidad:", error)
-      return []
-    }
-  }
+        if (occupiedStarts.includes(horaInicio)) {
+          setHoraInicio("");
+        }
+      } catch (error) {
+        console.error("Error al cargar bloques ocupados:", error);
+        showAlert(
+          "error",
+          "No pudimos consultar disponibilidad",
+          "Intenta nuevamente antes de reservar.",
+        );
+      } finally {
+        setCheckingAvailability(false);
+      }
+    };
 
-  const haySuperposicion = (reservasExistentes, inicio, fin) => {
-    return reservasExistentes.some(reserva => {
-      const reservaInicio = new Date(`2000-01-01T${reserva.horaInicio}`)
-      const reservaFin = new Date(`2000-01-01T${reserva.horaFin}`)
-      return (inicio < reservaFin && fin > reservaInicio)
-    })
-  }
+    cargarBloquesOcupados();
+  }, [cancha?.id, fecha, horaInicio, verificarDisponibilidad]);
 
   const crearReserva = async () => {
     if (!auth.currentUser) {
-      setMensaje("❌ Debes iniciar sesión para reservar")
-      return
+      showAlert("error", "Sesion requerida", "Debes iniciar sesion para reservar.");
+      return;
     }
 
     if (!cancha) {
-      setMensaje("❌ No se ha seleccionado una cancha")
-      return
+      showAlert("error", "Cancha requerida", "Selecciona una cancha antes de continuar.");
+      return;
     }
 
-    // Validar estado de la cancha
     if (cancha.estado === "Mantenimiento") {
-      setMensaje("⚠️ Esta cancha está en mantenimiento y no se puede reservar")
-      return
+      showAlert(
+        "warning",
+        "Cancha en mantenimiento",
+        "Esta cancha no esta disponible para reservas en este momento.",
+      );
+      return;
     }
 
     if (!fecha || !horaInicio || !horaFin) {
-      setMensaje("⚠️ Todos los campos son obligatorios")
-      return
+      showAlert("warning", "Datos incompletos", "Selecciona fecha y horario.");
+      return;
     }
 
-    const inicio = new Date(`2000-01-01T${horaInicio}`)
-    const fin = new Date(`2000-01-01T${horaFin}`)
-    
-    // Validar horarios (3pm - 12am)
-    const horaInicioNum = parseInt(horaInicio.split(':')[0])
-    const horaFinNum = parseInt(horaFin.split(':')[0])
-    if (horaInicioNum < 15 || horaFinNum < 15) {
-      setMensaje("⚠️ Las canchas solo están disponibles de 3:00 PM a 12:00 AM")
-      return
-    }
-    
-    if (fin <= inicio) {
-      setMensaje("⚠️ La hora de fin debe ser posterior a la hora de inicio")
-      return
+    if (!isValidReservationSlot(horaInicio, horaFin)) {
+      showAlert("warning", "Horario no disponible", getReservationSlotMessage());
+      return;
     }
 
-    // Verificar disponibilidad
-    const reservasExistentes = await verificarDisponibilidad()
-    if (haySuperposicion(reservasExistentes, inicio, fin)) {
-      setMensaje("⚠️ Este horario ya está reservado por otro usuario")
-      return
-    }
+    setSaving(true);
 
     try {
-      const precioTotal = calcularPrecioTotal()
+      const reservasExistentes = await verificarDisponibilidad();
+      if (hasReservationOverlap(reservasExistentes, horaInicio, horaFin)) {
+        showAlert(
+          "warning",
+          "Horario ocupado",
+          "Este bloque ya esta reservado por otro usuario. Elige otro horario.",
+        );
+        return;
+      }
 
       await addDoc(collection(db, "reservas"), {
         usuarioId: auth.currentUser.uid,
@@ -138,209 +437,149 @@ function CrearReservaPage() {
         horaFin,
         estado: "pendiente",
         precioTotal,
-        fechaCreacion: new Date()
-      })
+        fechaCreacion: new Date(),
+      });
 
-      setMensaje("✅ Reserva creada correctamente")
-      setTimeout(() => {
-        navigate("/reservas")
-      }, 1500)
-
+      showAlert(
+        "success",
+        "Reserva creada",
+        "Tu reserva quedo registrada correctamente.",
+        true,
+      );
+      setTimeout(() => navigate("/reservas"), 1400);
     } catch (error) {
-      console.error("Error al crear reserva:", error)
-      setMensaje("❌ Error al crear la reserva")
+      console.error("Error al crear reserva:", error);
+      showAlert("error", "Error al crear la reserva", "Intenta nuevamente.");
+    } finally {
+      setSaving(false);
     }
-  }
+  };
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: "100px" }}>
-        Cargando...
+      <div style={styles.page}>
+        <div style={styles.empty}>Cargando...</div>
       </div>
-    )
+    );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: "700px", margin: "0 auto", padding: "40px 20px" }}>
-        <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <h1 style={{ color: "#0f172a", fontSize: "42px", fontWeight: 800, marginBottom: "12px" }}>
-            ⚽ Crear Reserva
-          </h1>
-          <p style={{ color: "#64748b", fontSize: "18px", maxWidth: "500px", margin: "0 auto" }}>
-            Completa los datos para reservar tu cancha favorita
-          </p>
-        </div>
-
-        {mensaje && (
-          <div style={{
-            background: mensaje.includes("✅") ? "#dcfce7" : mensaje.includes("⚠️") ? "#fef9c3" : "#fee2e2",
-            color: mensaje.includes("✅") ? "#166534" : mensaje.includes("⚠️") ? "#854d0e" : "#991b1b",
-            padding: "16px 24px",
-            borderRadius: "16px",
-            marginBottom: "24px",
-            fontWeight: 600,
-            fontSize: "15px",
-            textAlign: "center",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
-          }}>
-            {mensaje}
+    <div style={styles.page}>
+      <div style={styles.shell}>
+        <div style={styles.header}>
+          <div>
+            <div style={styles.eyebrow}>Nueva reserva</div>
+            <h1 style={styles.title}>Elige tu bloque de juego</h1>
+            <p style={styles.subtitle}>
+              Las reservas se toman por bloques exactos de una hora, desde las
+              3:00 PM hasta las 11:00 PM.
+            </p>
           </div>
-        )}
-
-        {cancha && (
-          <div style={{ 
-            background: "linear-gradient(135deg, #ffffff, #f8fafc)", 
-            padding: "28px", 
-            borderRadius: "24px", 
-            marginBottom: "28px", 
-            boxShadow: "0 8px 35px rgba(0,0,0,0.06)",
-            border: "1px solid #e5e7eb"
-          }}>
-            <h3 style={{ color: "#0f172a", fontSize: "20px", fontWeight: 700, marginBottom: "16px" }}>Cancha seleccionada</h3>
-            <div style={{ display: "grid", gap: "12px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "20px" }}>⚽</span>
-                <span style={{ color: "#334155" }}><b>Nombre:</b> {cancha.nombre}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "20px" }}>🏟️</span>
-                <span style={{ color: "#334155" }}><b>Tipo:</b> {cancha.tipo}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "20px" }}>📍</span>
-                <span style={{ color: "#334155" }}><b>Ubicación:</b> {cancha.ubicacion}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "20px" }}>💰</span>
-                <span style={{ color: "#334155" }}><b>Precio por hora:</b> ${cancha.precioHora}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div style={{ 
-          background: "linear-gradient(135deg, #ffffff, #f8fafc)", 
-          padding: "40px", 
-          borderRadius: "28px", 
-          boxShadow: "0 10px 40px rgba(0,0,0,0.06)",
-          border: "1px solid #e5e7eb"
-        }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: 600, color: "#334155", fontSize: "15px" }}>📅 Fecha</label>
-              <input
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                style={{ 
-                  width: "100%", 
-                  padding: "14px 18px", 
-                  borderRadius: "12px", 
-                  border: "2px solid #e5e7eb", 
-                  fontSize: "16px",
-                  fontFamily: "'Segoe UI', system-ui, sans-serif",
-                  transition: "border-color 0.2s",
-                  outline: "none"
-                }}
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: 600, color: "#334155", fontSize: "15px" }}>⏰ Hora inicio</label>
-              <input
-                type="time"
-                value={horaInicio}
-                onChange={(e) => setHoraInicio(e.target.value)}
-                style={{ 
-                  width: "100%", 
-                  padding: "14px 18px", 
-                  borderRadius: "12px", 
-                  border: "2px solid #e5e7eb", 
-                  fontSize: "16px",
-                  fontFamily: "'Segoe UI', system-ui, sans-serif",
-                  transition: "border-color 0.2s",
-                  outline: "none"
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: 600, color: "#334155", fontSize: "15px" }}>⏰ Hora fin</label>
-              <input
-                type="time"
-                value={horaFin}
-                onChange={(e) => setHoraFin(e.target.value)}
-                style={{ 
-                  width: "100%", 
-                  padding: "14px 18px", 
-                  borderRadius: "12px", 
-                  border: "2px solid #e5e7eb", 
-                  fontSize: "16px",
-                  fontFamily: "'Segoe UI', system-ui, sans-serif",
-                  transition: "border-color 0.2s",
-                  outline: "none"
-                }}
-              />
-            </div>
-
-            {cancha && horaInicio && horaFin && (
-              <div style={{ 
-                background: "linear-gradient(135deg, #dcfce7, #bbf7d0)", 
-                padding: "20px 24px", 
-                borderRadius: "16px", 
-                marginTop: "8px",
-                boxShadow: "0 4px 12px rgba(34,197,94,0.1)"
-              }}>
-                <p style={{ margin: 0, fontWeight: 700, color: "#166534", fontSize: "18px" }}>
-                  💰 Precio total: ${calcularPrecioTotal().toFixed(2)}
-                </p>
-              </div>
-            )}
-
-            <button
-              onClick={crearReserva}
-              style={{
-                background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                color: "#fff",
-                border: "none",
-                padding: "16px 32px",
-                borderRadius: "14px",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: "16px",
-                marginTop: "12px",
-                transition: "transform 0.2s, box-shadow 0.2s",
-                boxShadow: "0 8px 20px rgba(34,197,94,0.3)"
-              }}
-            >
-              ⚽ Crear Reserva
-            </button>
-          </div>
-        </div>
-
-        <div style={{ textAlign: "center", marginTop: "28px" }}>
           <button
+            style={styles.backButton}
             onClick={() => navigate("/buscar-canchas")}
-            style={{
-              background: "transparent",
-              color: "#64748b",
-              border: "2px solid #e5e7eb",
-              padding: "12px 28px",
-              borderRadius: "12px",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "15px",
-              transition: "all 0.2s"
-            }}
           >
-            ← Volver a buscar canchas
+            Volver
           </button>
         </div>
+
+        {!cancha ? (
+          <div style={styles.empty}>No hay cancha seleccionada.</div>
+        ) : (
+          <div style={styles.layout}>
+            <section style={{ ...styles.panel, ...styles.courtPanel }}>
+              <div style={styles.eyebrow}>Cancha seleccionada</div>
+              <h2 style={styles.courtName}>{cancha.nombre}</h2>
+              <div style={styles.infoGrid}>
+                <div style={styles.infoItem}>
+                  <span>Tipo</span>
+                  <span style={styles.infoValue}>{cancha.tipo}</span>
+                </div>
+                <div style={styles.infoItem}>
+                  <span>Ubicacion</span>
+                  <span style={styles.infoValue}>{cancha.ubicacion}</span>
+                </div>
+                <div style={styles.infoItem}>
+                  <span>Precio por hora</span>
+                  <span style={styles.infoValue}>${Number(cancha.precioHora).toFixed(2)}</span>
+                </div>
+                <div style={styles.infoItem}>
+                  <span>Disponibilidad</span>
+                  <span style={styles.infoValue}>3:00 PM - 11:00 PM</span>
+                </div>
+              </div>
+            </section>
+
+            <section style={{ ...styles.panel, ...styles.formPanel }}>
+              <h2 style={styles.panelTitle}>Datos de la reserva</h2>
+              <div style={styles.field}>
+                <label style={styles.label}>Fecha</label>
+                <input
+                  type="date"
+                  value={fecha}
+                  onChange={(event) => setFecha(event.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Bloque horario</label>
+                <select
+                  value={horaInicio}
+                  onChange={(event) => setHoraInicio(event.target.value)}
+                  style={styles.select}
+                  disabled={!fecha || checkingAvailability}
+                >
+                  <option value="">
+                    {checkingAvailability
+                      ? "Consultando disponibilidad..."
+                      : "Selecciona un horario"}
+                  </option>
+                  {RESERVATION_SLOTS.map((slot) => (
+                    <option
+                      key={slot.start}
+                      value={slot.start}
+                      disabled={unavailableSlots.includes(slot.start)}
+                    >
+                      {slot.label}
+                      {unavailableSlots.includes(slot.start) ? " - Reservado" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p style={styles.hint}>{getReservationSlotMessage()}</p>
+              </div>
+
+              {selectedSlot && (
+                <div style={styles.priceBox}>
+                  <div>
+                    <p style={styles.priceLabel}>Total por 1 hora</p>
+                    <p style={styles.hint}>
+                      {selectedSlot.label}
+                    </p>
+                  </div>
+                  <p style={styles.priceValue}>${precioTotal.toFixed(2)}</p>
+                </div>
+              )}
+
+              <button
+                style={{
+                  ...styles.submitButton,
+                  ...(saving ? styles.disabledButton : {}),
+                }}
+                onClick={crearReserva}
+                disabled={saving}
+              >
+                {saving ? "Guardando..." : "Confirmar reserva"}
+              </button>
+            </section>
+          </div>
+        )}
       </div>
+
+      <CenteredAlert alert={alert} onClose={() => setAlert(null)} />
     </div>
-  )
+  );
 }
 
-export default CrearReservaPage
+export default CrearReservaPage;

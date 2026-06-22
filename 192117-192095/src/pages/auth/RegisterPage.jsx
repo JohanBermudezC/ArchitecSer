@@ -3,12 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../../firebase";
 import {
-  addDoc,
-  collection,
   doc,
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
+import {
+  getPasswordPolicyMessage,
+  getPasswordStrength,
+  PASSWORD_POLICY_TEXT,
+} from "../../utils/passwordPolicy";
 
 const s = {
   page: {
@@ -140,14 +143,6 @@ const s = {
   },
 };
 
-function getStrength(pw) {
-  if (!pw) return { level: 0, label: "", color: "#e5e5e5" };
-  if (pw.length < 6) return { level: 1, label: "Débil", color: "#ef4444" };
-  if (pw.length < 10 || !/[0-9]/.test(pw))
-    return { level: 2, label: "Media", color: "#f59e0b" };
-  return { level: 3, label: "Fuerte", color: "#22c55e" };
-}
-
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -161,7 +156,7 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [firebaseError, setFirebaseError] = useState("");
-  const strength = getStrength(form.password);
+  const strength = getPasswordStrength(form.password);
 
   const validate = () => {
     const e = {};
@@ -171,7 +166,10 @@ export default function RegisterPage() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = "Formato inválido";
     if (!form.password) e.password = "Contraseña obligatoria";
-    else if (form.password.length < 6) e.password = "Mínimo 6 caracteres";
+    else {
+      const passwordPolicyMessage = getPasswordPolicyMessage(form.password);
+      if (passwordPolicyMessage) e.password = passwordPolicyMessage;
+    }
     if (!form.confirm) e.confirm = "Confirma tu contraseña";
     else if (form.confirm !== form.password)
       e.confirm = "Las contraseñas no coinciden";
@@ -218,7 +216,7 @@ export default function RegisterPage() {
         );
       } else if (error.code === "auth/weak-password") {
         setFirebaseError(
-          "La contraseña es muy débil. Usa al menos 6 caracteres.",
+          `La contraseña es muy débil. ${PASSWORD_POLICY_TEXT}`,
         );
       } else if (error.code === "auth/network-request-failed") {
         setFirebaseError("Error de red. Verifica tu conexión.");
@@ -293,7 +291,7 @@ export default function RegisterPage() {
           <input
             style={{ ...s.input, ...(errors.password ? s.inputErr : {}) }}
             type="password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder={PASSWORD_POLICY_TEXT}
             value={form.password}
             onChange={(e) => change("password", e.target.value)}
           />
@@ -308,7 +306,9 @@ export default function RegisterPage() {
                       height: "4px",
                       borderRadius: "4px",
                       background:
-                        i <= strength.level ? strength.color : "#e5e5e5",
+                        i <= Math.ceil((strength.score / 5) * 3)
+                          ? strength.color
+                          : "#e5e5e5",
                       transition: "background 0.3s",
                     }}
                   />
